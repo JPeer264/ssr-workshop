@@ -3,6 +3,7 @@ import express from 'express';
 import fetch from 'node-fetch';
 import path from 'path';
 import { renderToString } from 'react-dom/server';
+import { FilledContext, HelmetProvider } from 'react-helmet-async';
 import { StaticRouter } from 'react-router';
 import { ServerStyleSheet } from 'styled-components';
 import App from '../app/App';
@@ -26,22 +27,30 @@ app.get('/*', async (req, res, next) => {
   try {
     const styleSheet = new ServerStyleSheet();
     const extractor = new ChunkExtractor({ statsFile });
+    const helmetContext: Partial<FilledContext> = {};
 
     const appHtml = renderToString(
       extractor.collectChunks(
         styleSheet.collectStyles(
           <StaticRouter location={req.originalUrl}>
-            <App />
+            <HelmetProvider context={helmetContext}>
+              <App />
+            </HelmetProvider>
           </StaticRouter>,
         ),
       ),
     );
+
+    const helmetString = Object.values(helmetContext.helmet || {})
+      .filter(Boolean)
+      .join('');
 
     const responseHtml = `
       <!DOCTYPE html>
       <html>
         <head>
           <meta charset="UTF-8">
+          ${helmetString}
           ${extractor.getStyleTags()}
           ${styleSheet.getStyleTags()}
         </head>
