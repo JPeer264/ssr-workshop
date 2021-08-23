@@ -1,5 +1,4 @@
 import { FC } from 'react';
-import { QueryClient, QueryClientProvider } from 'react-query';
 import { DehydratedState } from 'react-query/types/hydration';
 import { Route, Switch } from 'react-router-dom';
 import Container from './components/Container';
@@ -15,10 +14,8 @@ export interface PreloadedData {
   query?: DehydratedState;
 }
 
-const queryClient = new QueryClient();
-
 const App: FC = () => (
-  <QueryClientProvider client={queryClient}>
+  <>
     <Helmet />
     <GlobalStyles />
     <Header />
@@ -29,7 +26,7 @@ const App: FC = () => (
         <Route exact path="/users/:id" component={UserDetail} />
       </Switch>
     </Container>
-  </QueryClientProvider>
+  </>
 );
 
 export default App;

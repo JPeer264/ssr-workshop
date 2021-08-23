@@ -3,12 +3,15 @@ import express from 'express';
 import fetch from 'node-fetch';
 import path from 'path';
 import { renderToNodeStream } from 'react-dom/server';
-import { FilledContext, Helmet, HelmetProvider } from 'react-helmet-async';
+import { FilledContext, HelmetProvider } from 'react-helmet-async';
 import { getDataFromTree } from '@apollo/client/react/ssr';
 import { StaticRouter } from 'react-router';
 import { ServerStyleSheet } from 'styled-components';
-import App from '../app/App';
+import { QueryClient, QueryClientProvider } from 'react-query';
+import { dehydrate, Hydrate } from 'react-query/hydration';
+import App, { PreloadedData } from '../app/App';
 import devMiddleware from './devMiddleware';
+import { fetchUserById, fetchUsers } from '../app/services/api';
 
 const statsFile = path.resolve(process.cwd(), 'dist/loadable-stats.json');
 const app = express();
@@ -29,12 +32,33 @@ app.get('/*', async (req, res, next) => {
     const sheet = new ServerStyleSheet();
     const extractor = new ChunkExtractor({ statsFile });
     const helmetContext: Partial<FilledContext> = {};
+    const queryClient = new QueryClient();
+
+    if (/\/users\/\d+/.test(req.originalUrl)) {
+      const [, id] = req.originalUrl.match(/\/users\/(\d+)/)!;
+
+      await queryClient.prefetchQuery(['user', id], () => fetchUserById(id));
+    } else if (req.originalUrl.includes('/users')) {
+      await queryClient.prefetchQuery('users', fetchUsers);
+    }
+
+    const dehydratedState = dehydrate(queryClient);
+
+    const initialData: PreloadedData = {
+      query: dehydratedState,
+    };
+
+    global.window = { __PRELOADED_DATA__: initialData };
 
     const reactApp = (
       <StaticRouter location={req.originalUrl}>
-        <HelmetProvider context={helmetContext}>
-          <App />
-        </HelmetProvider>
+        <QueryClientProvider client={queryClient}>
+          <Hydrate state={dehydratedState}>
+            <HelmetProvider context={helmetContext}>
+              <App />
+            </HelmetProvider>
+          </Hydrate>
+        </QueryClientProvider>
       </StaticRouter>
     );
 
@@ -67,6 +91,7 @@ app.get('/*', async (req, res, next) => {
       res.end(`
             </div>
             ${extractor.getScriptTags()}
+            <script type="application/javascript">window.__PRELOADED_DATA__ = ${JSON.stringify(initialData).replace(/</g, '\\u003c')}</script>
           </body>
         </html>
       `)
