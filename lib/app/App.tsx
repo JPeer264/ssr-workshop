@@ -1,5 +1,4 @@
 import { FC } from 'react';
-import { HelmetProvider } from 'react-helmet-async';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import { DehydratedState } from 'react-query/types/hydration';
 import { Route, Switch } from 'react-router-dom';
@@ -19,20 +18,18 @@ export interface PreloadedData {
 const queryClient = new QueryClient();
 
 const App: FC = () => (
-  <HelmetProvider>
-    <QueryClientProvider client={queryClient}>
-      <Helmet />
-      <GlobalStyles />
-      <Header />
-      <Container>
-        <Switch>
-          <Route exact path="/" component={Home} />
-          <Route exact path="/users" component={UsersOverview} />
-          <Route exact path="/users/:id" component={UserDetail} />
-        </Switch>
-      </Container>
-    </QueryClientProvider>
-  </HelmetProvider>
+  <QueryClientProvider client={queryClient}>
+    <Helmet />
+    <GlobalStyles />
+    <Header />
+    <Container>
+      <Switch>
+        <Route exact path="/" component={Home} />
+        <Route exact path="/users" component={UsersOverview} />
+        <Route exact path="/users/:id" component={UserDetail} />
+      </Switch>
+    </Container>
+  </QueryClientProvider>
 );
 
 export default App;

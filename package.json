@@ -13,6 +13,7 @@
   "license": "ISC",
   "dependencies": {
     "@adobe/react-spectrum": "^3.13.0",
+    "@apollo/client": "^3.4.8",
     "@babel/cli": "^7.13.14",
     "@babel/core": "^7.13.14",
     "@babel/preset-env": "^7.13.12",
@@ -30,6 +31,7 @@
     "dotenv": "^6.2.0",
     "dotenv-defaults": "^2.0.1",
     "express": "^4.16.4",
+    "graphql": "^15.5.1",
     "ignore-styles": "^5.0.1",
     "node-fetch": "^2.6.1",
     "react": "^16.13.1",

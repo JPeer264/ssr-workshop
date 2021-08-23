@@ -3,6 +3,8 @@ import express from 'express';
 import fetch from 'node-fetch';
 import path from 'path';
 import { renderToNodeStream } from 'react-dom/server';
+import { FilledContext, Helmet, HelmetProvider } from 'react-helmet-async';
+import { getDataFromTree } from '@apollo/client/react/ssr';
 import { StaticRouter } from 'react-router';
 import { ServerStyleSheet } from 'styled-components';
 import App from '../app/App';
@@ -26,12 +28,28 @@ app.get('/*', async (req, res, next) => {
   try {
     const sheet = new ServerStyleSheet();
     const extractor = new ChunkExtractor({ statsFile });
+    const helmetContext: Partial<FilledContext> = {};
+
+    const reactApp = (
+      <StaticRouter location={req.originalUrl}>
+        <HelmetProvider context={helmetContext}>
+          <App />
+        </HelmetProvider>
+      </StaticRouter>
+    );
+
+    await getDataFromTree(reactApp);
+
+    const helmetString = Object.values(helmetContext.helmet || {})
+      .filter(Boolean)
+      .join('');
 
     res.write(`
       <!DOCTYPE html>
       <html>
         <head>
           <meta charset="UTF-8">
+          ${helmetString}
         </head>
         <body>
           <div id="main">
@@ -39,11 +57,7 @@ app.get('/*', async (req, res, next) => {
 
     const stream = sheet.interleaveWithNodeStream(renderToNodeStream(
       extractor.collectChunks(
-        sheet.collectStyles(
-          <StaticRouter location={req.originalUrl}>
-            <App />
-          </StaticRouter>,
-        ),
+        sheet.collectStyles(reactApp),
       ),
     ));
 
