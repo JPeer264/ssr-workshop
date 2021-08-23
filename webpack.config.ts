@@ -62,24 +62,7 @@ const webpackConfig: webpack.Configuration = {
         '!*loadable-stats*',
       ],
     }),
-    new HtmlWebpackPlugin({
-      templateContent: `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="UTF-8">
-          </head>
-          <body>
-            <div id="main"></div>
-          </body>
-        </html>
-      `,
-    }),
   ].filter(Boolean),
-  devServer: {
-    historyApiFallback: true,
-    port: 3000,
-  },
 };
 
 if (isDevMode) {
