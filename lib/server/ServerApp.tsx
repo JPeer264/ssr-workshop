@@ -4,9 +4,12 @@ import fetch from 'node-fetch';
 import path from 'path';
 import { renderToString } from 'react-dom/server';
 import { FilledContext, HelmetProvider } from 'react-helmet-async';
+import { QueryClient, QueryClientProvider } from 'react-query';
+import { dehydrate, Hydrate } from 'react-query/hydration';
 import { StaticRouter } from 'react-router';
 import { ServerStyleSheet } from 'styled-components';
-import App from '../app/App';
+import App, { PreloadedData } from '../app/App';
+import { fetchUserById, fetchUsers } from '../app/services/api';
 import devMiddleware from './devMiddleware';
 
 const statsFile = path.resolve(process.cwd(), 'dist/loadable-stats.json');
@@ -28,14 +31,35 @@ app.get('/*', async (req, res, next) => {
     const styleSheet = new ServerStyleSheet();
     const extractor = new ChunkExtractor({ statsFile });
     const helmetContext: Partial<FilledContext> = {};
+    const queryClient = new QueryClient();
+
+    if (/\/users\/\d+/.test(req.originalUrl)) {
+      const [, id] = req.originalUrl.match(/\/users\/(\d+)/)!;
+
+      await queryClient.prefetchQuery(['user', id], () => fetchUserById(id));
+    } else if (req.originalUrl.includes('/users')) {
+      await queryClient.prefetchQuery('users', fetchUsers);
+    }
+
+    const dehydratedState = dehydrate(queryClient);
+
+    const initialData: PreloadedData = {
+      query: dehydratedState,
+    };
+
+    global.window = { __PRELOADED_DATA__: initialData };
 
     const appHtml = renderToString(
       extractor.collectChunks(
         styleSheet.collectStyles(
           <StaticRouter location={req.originalUrl}>
-            <HelmetProvider context={helmetContext}>
-              <App />
-            </HelmetProvider>
+            <QueryClientProvider client={queryClient}>
+              <Hydrate state={dehydratedState}>
+                <HelmetProvider context={helmetContext}>
+                  <App />
+                </HelmetProvider>
+              </Hydrate>
+            </QueryClientProvider>
           </StaticRouter>,
         ),
       ),
@@ -56,6 +80,7 @@ app.get('/*', async (req, res, next) => {
         </head>
         <body>
           <div id="main">${appHtml}</div>
+          <script type="application/javascript">window.__PRELOADED_DATA__ = ${JSON.stringify(initialData).replace(/</g, '\\u003c')}</script>
           ${extractor.getScriptTags()}
         </body>
       </html>
