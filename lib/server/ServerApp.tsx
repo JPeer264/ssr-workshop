@@ -4,6 +4,7 @@ import fetch from 'node-fetch';
 import path from 'path';
 import { renderToString } from 'react-dom/server';
 import { StaticRouter } from 'react-router';
+import { ServerStyleSheet } from 'styled-components';
 import App from '../app/App';
 import devMiddleware from './devMiddleware';
 
@@ -23,13 +24,16 @@ app.use(express.urlencoded());
 
 app.get('/*', async (req, res, next) => {
   try {
+    const styleSheet = new ServerStyleSheet();
     const extractor = new ChunkExtractor({ statsFile });
 
     const appHtml = renderToString(
       extractor.collectChunks(
-        <StaticRouter location={req.originalUrl}>
-          <App />
-        </StaticRouter>,
+        styleSheet.collectStyles(
+          <StaticRouter location={req.originalUrl}>
+            <App />
+          </StaticRouter>,
+        ),
       ),
     );
 
@@ -38,6 +42,8 @@ app.get('/*', async (req, res, next) => {
       <html>
         <head>
           <meta charset="UTF-8">
+          ${extractor.getStyleTags()}
+          ${styleSheet.getStyleTags()}
         </head>
         <body>
           <div id="main">${appHtml}</div>
@@ -45,6 +51,8 @@ app.get('/*', async (req, res, next) => {
         </body>
       </html>
     `;
+
+    styleSheet.seal();
 
     res.send(responseHtml);
   } catch (err) {
