@@ -4,6 +4,7 @@ import fetch from 'node-fetch';
 import path from 'path';
 import { renderToNodeStream } from 'react-dom/server';
 import { StaticRouter } from 'react-router';
+import { ServerStyleSheet } from 'styled-components';
 import App from '../app/App';
 import devMiddleware from './devMiddleware';
 
@@ -23,6 +24,7 @@ app.use(express.urlencoded());
 
 app.get('/*', async (req, res, next) => {
   try {
+    const sheet = new ServerStyleSheet();
     const extractor = new ChunkExtractor({ statsFile });
 
     res.write(`
@@ -35,13 +37,15 @@ app.get('/*', async (req, res, next) => {
           <div id="main">
     `);
 
-    const stream = renderToNodeStream(
+    const stream = sheet.interleaveWithNodeStream(renderToNodeStream(
       extractor.collectChunks(
-        <StaticRouter location={req.originalUrl}>
-          <App />
-        </StaticRouter>,
+        sheet.collectStyles(
+          <StaticRouter location={req.originalUrl}>
+            <App />
+          </StaticRouter>,
+        ),
       ),
-    );
+    ));
 
     stream.pipe(res, { end: false });
 
