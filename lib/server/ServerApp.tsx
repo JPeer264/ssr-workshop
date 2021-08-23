@@ -1,8 +1,13 @@
+import { ChunkExtractor } from '@loadable/server';
 import express from 'express';
 import fetch from 'node-fetch';
 import path from 'path';
+import { renderToString } from 'react-dom/server';
+import { StaticRouter } from 'react-router';
+import App from '../app/App';
 import devMiddleware from './devMiddleware';
 
+const statsFile = path.resolve(process.cwd(), 'dist/loadable-stats.json');
 const app = express();
 
 if (process.env.NODE_ENV === 'development') {
@@ -18,6 +23,16 @@ app.use(express.urlencoded());
 
 app.get('/*', async (req, res, next) => {
   try {
+    const extractor = new ChunkExtractor({ statsFile });
+
+    const appHtml = renderToString(
+      extractor.collectChunks(
+        <StaticRouter location={req.originalUrl}>
+          <App />
+        </StaticRouter>,
+      ),
+    );
+
     const responseHtml = `
       <!DOCTYPE html>
       <html>
@@ -25,7 +40,8 @@ app.get('/*', async (req, res, next) => {
           <meta charset="UTF-8">
         </head>
         <body>
-          <div id="main">Here could be your server side rendered app</div>
+          <div id="main">${appHtml}</div>
+          ${extractor.getScriptTags()}
         </body>
       </html>
     `;
